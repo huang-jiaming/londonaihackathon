@@ -17,6 +17,10 @@ You must have these backend env vars set on that host:
 - `DUST_AGENT_ID`
 - `CODEWORDS_API_KEY`
 - `CODEWORDS_SERVICE_ID`
+- `GITHUB_ISSUES_TOKEN`
+- `GITHUB_ISSUES_OWNER`
+- `GITHUB_ISSUES_REPO`
+- `SLACK_WEBHOOK_URL`
 - optional `GITHUB_TOKEN`
 
 After deploy, note backend URL, for example:
@@ -52,6 +56,10 @@ In GitHub:
 2. `Build and deployment` -> `Source: GitHub Actions`
 3. Add a workflow that publishes your static frontend build output to Pages.
 
+Auth note:
+- Standard Pages workflows should use the built-in `GITHUB_TOKEN`.
+- You only need a custom PAT when publishing to a different repository.
+
 ## 5) CORS requirement
 
 Your backend host must allow your Pages origin:
@@ -66,4 +74,24 @@ From deployed Pages URL:
 1. Use sample input
 2. Run sequential flow
 3. Confirm all 4 steps return
-4. Confirm Step 4 fallback still works if CodeWords is unavailable
+4. Confirm Step 4 creates GitHub Issues and sends Slack message
+5. Confirm fallback still works if CodeWords or delivery targets fail
+
+## Token source quick reference
+
+### CodeWords API key
+- Source: CodeWords dashboard key management page.
+- Store in backend as `CODEWORDS_API_KEY`.
+
+### GitHub Issues token
+- Source: GitHub -> Settings -> Developer settings -> Personal access tokens -> Fine-grained tokens -> Generate new token.
+- Minimum repo permissions: `Issues` (Read and write).
+- Store in backend as `GITHUB_ISSUES_TOKEN`.
+
+### Slack webhook URL
+- Source: https://api.slack.com/apps -> create app -> Incoming Webhooks -> activate -> Add New Webhook to Workspace.
+- Store in backend as `SLACK_WEBHOOK_URL`.
+
+### Vercel token (optional for CLI/CI deploy)
+- Source: Vercel Dashboard -> Settings -> Tokens.
+- Needed only for CLI-driven deployment workflows.

@@ -20,7 +20,12 @@ This project uses the required 3+ partner technologies:
 2. **Dust** (Step 3)
    - Agent-based conversion from free text to strict JSON tickets
 3. **CodeWords** (Step 4)
-   - Automation/export of ticket payloads
+   - Automation/orchestration of delivery payloads
+   - Critical path before downstream delivery
+4. **GitHub Issues** (Delivery target)
+   - Creates execution-ready issues for engineering teams
+5. **Slack** (Delivery target)
+   - Posts summary and issue links to team channel
 
 ## Architecture
 
@@ -72,6 +77,10 @@ Required vars:
 - `DUST_AGENT_ID`
 - `CODEWORDS_API_KEY`
 - `CODEWORDS_SERVICE_ID`
+- `GITHUB_ISSUES_TOKEN`
+- `GITHUB_ISSUES_OWNER`
+- `GITHUB_ISSUES_REPO`
+- `SLACK_WEBHOOK_URL`
 - `NEXT_PUBLIC_API_BASE_URL` (optional; required for static frontend deployments)
 
 Optional:
@@ -164,7 +173,7 @@ Output:
 }
 ```
 
-### Step 4 - Export
+### Step 4 - Export (CodeWords -> GitHub Issues + Slack)
 `POST /api/export`
 
 Input:
@@ -180,6 +189,9 @@ Output:
 {
   "success": true,
   "ticketsCreated": 12,
+  "issuesCreatedCount": 12,
+  "issueLinks": ["https://github.com/owner/repo/issues/123"],
+  "slackStatus": "sent",
   "provider": "codewords"
 }
 ```
@@ -194,8 +206,9 @@ Fallback output includes `csvContent` if external automation fails.
 4. Highlight partner tech usage:
    - Gemini for analysis + verification
    - Dust for JSON structuring
-   - CodeWords for export automation
-5. Show fallback CSV to prove reliability under failure.
+   - CodeWords for delivery orchestration
+5. Show created GitHub Issues and Slack summary delivery.
+6. Show fallback CSV to prove reliability under failure.
 
 ## Team workflow with Cursor
 
@@ -203,6 +216,7 @@ Fallback output includes `csvContent` if external automation fails.
 2. Each teammate uses their `docs/STEP*_SPEC.md` as Cursor prompt.
 3. Merge against shared type contracts in `src/lib/types.ts`.
 4. Integration owner validates end-to-end flow from the frontend.
+5. Review and execute `docs/INTEGRATION_REVIEW.md`.
 
 ## Submission checklist (hackathon)
 

@@ -1,4 +1,4 @@
-# Step 4 Spec - Export with CodeWords
+# Step 4 Spec - CodeWords Orchestration + GitHub Issues + Slack
 
 ## Owner
 Erdinc Mutlu
@@ -7,7 +7,7 @@ Erdinc Mutlu
 `POST /api/export`
 
 ## Purpose
-Send structured tickets to CodeWords automation and return export status.
+Use CodeWords in the critical path to transform structured tickets, then deliver to GitHub Issues and Slack.
 
 ## Input
 ```json
@@ -32,6 +32,10 @@ Send structured tickets to CodeWords automation and return export status.
 {
   "success": true,
   "ticketsCreated": 12,
+  "issuesCreatedCount": 12,
+  "issueLinks": ["https://github.com/owner/repo/issues/123"],
+  "slackStatus": "sent",
+  "slackMessageTsOrId": "optional",
   "provider": "codewords",
   "rawResponse": {}
 }
@@ -42,9 +46,12 @@ Fallback output when external call fails:
 {
   "success": false,
   "ticketsCreated": 12,
-  "provider": "local-fallback",
+  "issuesCreatedCount": 0,
+  "issueLinks": [],
+  "slackStatus": "failed",
+  "provider": "fallback",
   "csvContent": "id,priority,...",
-  "notes": "CodeWords failed, generated local CSV fallback"
+  "notes": "CodeWords/GitHub/Slack failed, generated local CSV fallback"
 }
 ```
 
@@ -52,12 +59,15 @@ Fallback output when external call fails:
 ```text
 Implement Step 4 in src/lib/steps.ts and src/app/api/export/route.ts.
 Requirements:
-- Call CodeWords sync run endpoint with tickets + summary payload.
-- Return normalized ExportResult contract.
-- Add robust handling for API failures and non-200 responses.
-- Always provide fallback CSV so demo does not fail.
+- Call CodeWords sync run endpoint first with tickets + summary payload.
+- Expect CodeWords output to include githubIssuesPayload[] and slackMessagePayload.
+- Create GitHub issues using GitHub REST API with GITHUB_ISSUES_TOKEN.
+- Send Slack summary with SLACK_WEBHOOK_URL.
+- Return unified delivery status: issue links + slack status + notes.
+- Add robust partial-failure handling and always return CSV fallback.
 ```
 
 ## Done Criteria
-- Success path calls real CodeWords service.
-- Failure path still gives usable export artifact.
+- Success path calls real CodeWords service and creates GitHub issues.
+- Slack notification posts with issue links.
+- Failure path still gives usable export artifact and clear notes.
