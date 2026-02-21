@@ -114,9 +114,9 @@ export default function HomePage() {
   return (
     <main>
       <h1>Repo Surgeon</h1>
-      <p>
-        Independent 4-step services for hackathon collaboration. UI calls each service in order so
-        each teammate can own one step.
+      <p className="hero-copy">
+        Make legacy code obsolete in minutes. Analyze, prioritize, and ship real GitHub issues
+        with team notifications in one flow.
       </p>
 
       <section className="card">
@@ -212,7 +212,22 @@ export default function HomePage() {
 
       {step4 ? (
         <section className="card">
-          <h2>Step 4 - Export (CodeWords)</h2>
+          <h2>Step 4 - Automate Delivery (CodeWords -&gt; GitHub Issues + Slack)</h2>
+          <p>
+            Issues created: <strong>{step4.issuesCreatedCount}</strong> | Slack:{" "}
+            <strong>{step4.slackStatus}</strong>
+          </p>
+          {step4.issueLinks.length > 0 ? (
+            <ul>
+              {step4.issueLinks.map((link) => (
+                <li key={link}>
+                  <a href={link} target="_blank" rel="noreferrer">
+                    {link}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <pre>{JSON.stringify(step4, null, 2)}</pre>
         </section>
       ) : null}

@@ -53,6 +53,20 @@ flowchart LR
 - `docs/STEP1_SPEC.md` ... `docs/STEP4_SPEC.md`: teammate specs
 - `docs/CURSOR_AGENT_HANDOFF.md`: Cursor collaboration playbook
 - `docs/ENGINEERING_PLAN.md`: execution and architecture plan
+- `docs/INTEGRATION_REVIEW.md`: full setup + token + integration checklist
+- `docs/DEPLOY_GITHUB_PAGES.md`: production deployment split (Vercel + Pages)
+- `docs/IMPLEMENTATION_STATUS.md`: current implementation and local test status
+
+## Current implementation status
+
+- Step 1 implemented: Gemini ingest/review from repo URL or pasted code
+- Step 2 implemented: Gemini action generation + self-verification loop
+- Step 3 implemented: Dust structuring to strict ticket JSON
+- Step 4 implemented: CodeWords orchestration -> GitHub issue creation -> Slack summary
+- UI implemented: single-page flow with sample input buttons and delivery results panel
+- Local checks completed:
+  - `npm run build` passes
+  - visual smoke test on `http://localhost:3000` confirmed UI loads and error handling works
 
 ## Setup
 

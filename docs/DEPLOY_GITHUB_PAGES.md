@@ -10,6 +10,28 @@ For this project, deploy in two parts:
 
 Deploy the current Next.js app to a runtime host (recommended: Vercel or Render).
 
+### Exact Vercel backend setup
+
+1. Go to https://vercel.com/new and import this GitHub repository.
+2. Framework preset: `Next.js`.
+3. Root directory: repository root.
+4. Build command: default (`next build`).
+5. Output directory: default (empty).
+6. Add Environment Variables (Production scope):
+   - `GEMINI_API_KEY`
+   - `DUST_API_KEY`
+   - `DUST_WORKSPACE_ID`
+   - `DUST_AGENT_ID`
+   - `CODEWORDS_API_KEY`
+   - `CODEWORDS_SERVICE_ID`
+   - `GITHUB_ISSUES_TOKEN`
+   - `GITHUB_ISSUES_OWNER`
+   - `GITHUB_ISSUES_REPO`
+   - `SLACK_WEBHOOK_URL`
+   - optional `GITHUB_TOKEN`
+7. Click Deploy.
+8. Save the deployed API origin (example: `https://repo-surgeon-api.vercel.app`).
+
 You must have these backend env vars set on that host:
 - `GEMINI_API_KEY`
 - `DUST_API_KEY`
@@ -60,6 +82,12 @@ Auth note:
 - Standard Pages workflows should use the built-in `GITHUB_TOKEN`.
 - You only need a custom PAT when publishing to a different repository.
 
+### GitHub Pages deployment variables/secrets
+- Build-time variable:
+  - `NEXT_PUBLIC_API_BASE_URL=https://your-vercel-backend-domain`
+- If your workflow requires repository/environment secrets, add in:
+  - `Settings` -> `Secrets and variables` -> `Actions`
+
 ## 5) CORS requirement
 
 Your backend host must allow your Pages origin:
@@ -88,6 +116,13 @@ From deployed Pages URL:
 - Minimum repo permissions: `Issues` (Read and write).
 - Store in backend as `GITHUB_ISSUES_TOKEN`.
 
+Token creation details:
+- Resource owner: your user or org that owns the target repo.
+- Repository access: select only target issue repo.
+- Permissions:
+  - Repository permissions -> `Issues`: Read and write.
+  - `Metadata` is read-only by default and sufficient.
+
 ### Slack webhook URL
 - Source: https://api.slack.com/apps -> create app -> Incoming Webhooks -> activate -> Add New Webhook to Workspace.
 - Store in backend as `SLACK_WEBHOOK_URL`.
@@ -95,3 +130,7 @@ From deployed Pages URL:
 ### Vercel token (optional for CLI/CI deploy)
 - Source: Vercel Dashboard -> Settings -> Tokens.
 - Needed only for CLI-driven deployment workflows.
+
+When needed, store as GitHub Action secret:
+- `VERCEL_TOKEN`
+- (if using `vercel pull`/`vercel deploy`) also store `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.

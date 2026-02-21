@@ -2,6 +2,8 @@
 
 This document is the single review checklist before demo and submission.
 
+Implementation status reference: `docs/IMPLEMENTATION_STATUS.md`.
+
 ## 1) Target architecture
 
 Step order must remain:

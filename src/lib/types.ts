@@ -39,10 +39,28 @@ export interface StructuredOutput {
 export interface ExportResult {
   success: boolean;
   ticketsCreated: number;
-  provider: "codewords" | "local-fallback";
+  issuesCreatedCount: number;
+  issueLinks: string[];
+  slackStatus: "sent" | "failed" | "skipped";
+  slackMessageTsOrId?: string;
+  provider: "codewords" | "fallback";
   rawResponse?: unknown;
   csvContent?: string;
   notes?: string;
+}
+
+export interface GitHubIssueDraft {
+  title: string;
+  body: string;
+  labels: string[];
+}
+
+export interface CodeWordsExportPayload {
+  githubIssuesPayload: GitHubIssueDraft[];
+  slackMessagePayload: {
+    text: string;
+    blocks?: unknown[];
+  };
 }
 
 export interface IngestInput {
