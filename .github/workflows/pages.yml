@@ -38,7 +38,6 @@ jobs:
       - name: Build static export
         run: |
           npm run build
-          npx next export
           touch out/.nojekyll
 
       - name: Upload artifact
