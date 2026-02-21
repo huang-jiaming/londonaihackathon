@@ -133,8 +133,6 @@ Analyze the input and return ONLY valid JSON with this exact schema:
   "concerns": "string"
 }
 
-Input language hint: ${input.language ?? "unknown"}
-
 Code/repo content:
 ${sourceText}
 `.trim();
