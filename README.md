@@ -1,6 +1,13 @@
  # Repo Surgeon
 
-Legacy code triage pipeline for the Tech Europe: London AI Hackathon (Conduct/Open track): ingest repo -> generate verified improvements -> structure tickets -> export automations.
+Legacy code triage pipeline for the Tech Europe: London AI Hackathon (Conduct Track):
+
+Inspired by Conduct's Track at the Hackathon today, we created a tool that enables you to automate the review and triaging of legagy code.  This tool will allow enterprises to review their legacy repos, and target the highest impact improvements - reducing complexity and increasing efficiency!
+
+How to use Repo Surgeon? 
+
+input a link to your repo -> generate verified improvements -> repo surgeon creates structured tickets -> export automations instantly connect your slack and github issues.
+
 
 ## How to use the tool
 
