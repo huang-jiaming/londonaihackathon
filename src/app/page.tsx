@@ -41,17 +41,25 @@ const STEP_HINTS: Record<ActiveStep, string[]> = {
   ]
 };
 
-const SAMPLE_REPO = "https://github.com/python/cpython";
-const SAMPLE_CODE = `# Python 2 style legacy example
-import urllib2
+const STEP_STATE_COPY: Record<StepKey, string> = {
+  idle: "Ready to run",
+  step1: "Scanning inputs",
+  step2: "Generating plan",
+  step3: "Structuring tickets",
+  step4: "Exporting and notifying",
+  done: "Workflow complete",
+  error: "Workflow failed"
+};
 
-def load_data(url):
-    print "fetching", url
-    req = urllib2.Request(url)
-    return urllib2.urlopen(req).read()
-`;
+const STEP_RESULT_TITLES: Record<ActiveStep, string> = {
+  step1: "Ingest + Review",
+  step2: "Action Plan",
+  step3: "Ticket Structure",
+  step4: "Delivery"
+};
 
 export default function HomePage() {
+  const [reviewMode, setReviewMode] = useState<"repo" | "code">("repo");
   const [repoUrl, setRepoUrl] = useState("");
   const [codeInput, setCodeInput] = useState("");
   const [language, setLanguage] = useState("python");
@@ -66,7 +74,10 @@ export default function HomePage() {
   const [step3, setStep3] = useState<StructuredOutput | null>(null);
   const [step4, setStep4] = useState<ExportResult | null>(null);
 
-  const canRun = useMemo(() => !!repoUrl.trim() || !!codeInput.trim(), [repoUrl, codeInput]);
+  const canRun = useMemo(() => {
+    if (reviewMode === "repo") return !!repoUrl.trim();
+    return !!codeInput.trim();
+  }, [codeInput, repoUrl, reviewMode]);
   const isRunning = status === "step1" || status === "step2" || status === "step3" || status === "step4";
   const activeStep = isRunning ? (status as ActiveStep) : null;
   const progressPercent = useMemo(() => {
@@ -78,6 +89,13 @@ export default function HomePage() {
     return Math.max(10, (activeIndex + 1) * 25);
   }, [activeStep, lastActiveStep, status]);
   const loadingHint = activeStep ? STEP_HINTS[activeStep][loadingHintIndex] : null;
+  const completedSteps = [step1, step2, step3, step4].filter(Boolean).length;
+  const totalTickets = step3?.tickets.length ?? 0;
+  const issueCount = step4?.issuesCreatedCount ?? 0;
+  const currentFocusStep = activeStep ?? lastActiveStep;
+  const currentFocusStepIndex = currentFocusStep
+    ? WORKFLOW_STEPS.findIndex((step) => step.key === currentFocusStep)
+    : -1;
 
   useEffect(() => {
     if (activeStep) {
@@ -135,7 +153,11 @@ export default function HomePage() {
     resetOutputs();
     try {
       setStatus("step1");
-      const ingestPayload = { repoUrl, codeInput, language };
+      const ingestPayload = {
+        repoUrl: reviewMode === "repo" ? repoUrl : "",
+        codeInput: reviewMode === "code" ? codeInput : "",
+        language
+      };
       const res1 = await postJson<RepoAnalysis>("/api/ingest", ingestPayload);
       setStep1(res1);
 
@@ -168,7 +190,11 @@ export default function HomePage() {
         step2: ActionItems;
         step3: StructuredOutput;
         step4: ExportResult;
-      }>("/api/pipeline", { repoUrl, codeInput, language });
+      }>("/api/pipeline", {
+        repoUrl: reviewMode === "repo" ? repoUrl : "",
+        codeInput: reviewMode === "code" ? codeInput : "",
+        language
+      });
       setStep1(result.step1);
       setStep2(result.step2);
       setStep3(result.step3);
@@ -181,54 +207,92 @@ export default function HomePage() {
   }
 
   return (
-    <main>
-      <h1>Repo Surgeon</h1>
-      <p className="hero-copy">
-        Make legacy code obsolete in minutes. Analyze, prioritize, and ship real GitHub issues
-        with team notifications in one flow.
-      </p>
+    <main className="app-shell">
+      <section className="card hero-panel">
+        <div className="hero-top-row">
+          <span className="live-badge">Live • Gemini + Dust + CodeWords</span>
+          <span className={`status-pill ${status}`}>{STEP_STATE_COPY[status]}</span>
+        </div>
+        <h1>Repo Surgeon</h1>
+        <p className="hero-copy">
+          Make legacy code obsolete in minutes. Analyze, prioritize, and ship GitHub-ready tickets
+          with team notifications in one continuous AI pipeline.
+        </p>
 
-      <section className="card">
-        <h2>Inputs</h2>
-        <div className="row">
+        <div className="metrics-grid">
+          <article className="metric-card">
+            <span className="metric-label">Pipeline Progress</span>
+            <strong className="metric-value">{progressPercent}%</strong>
+          </article>
+          <article className="metric-card">
+            <span className="metric-label">Steps Completed</span>
+            <strong className="metric-value">{completedSteps}/4</strong>
+          </article>
+          <article className="metric-card">
+            <span className="metric-label">Tickets Structured</span>
+            <strong className="metric-value">{totalTickets}</strong>
+          </article>
+          <article className="metric-card">
+            <span className="metric-label">Issues Created</span>
+            <strong className="metric-value">{issueCount}</strong>
+          </article>
+        </div>
+      </section>
+
+      <section className="card control-panel">
+        <div className="section-heading">
+          <h2>Launch Console</h2>
+          <p>Choose input mode, configure context, and run the full workflow.</p>
+        </div>
+
+        <div className="mode-switch" role="tablist" aria-label="Review mode">
           <button
-            className="secondary"
+            className={reviewMode === "repo" ? "mode-button active" : "mode-button"}
             type="button"
             disabled={isRunning}
             onClick={() => {
-              setRepoUrl(SAMPLE_REPO);
-              setCodeInput("");
-              setLanguage("python");
+              setReviewMode("repo");
             }}
           >
-            Use sample repo
+            Repo URL
           </button>
           <button
-            className="secondary"
+            className={reviewMode === "code" ? "mode-button active" : "mode-button"}
             type="button"
             disabled={isRunning}
             onClick={() => {
-              setCodeInput(SAMPLE_CODE);
-              setRepoUrl("");
-              setLanguage("python");
+              setReviewMode("code");
             }}
           >
-            Use sample code
+            Direct Code
           </button>
         </div>
 
-        <div style={{ marginTop: 12 }}>
-          <label htmlFor="repo-url">GitHub repo URL</label>
-          <input
-            id="repo-url"
-            value={repoUrl}
-            disabled={isRunning}
-            onChange={(e) => setRepoUrl(e.target.value)}
-            placeholder="https://github.com/owner/repo"
-          />
-        </div>
+        {reviewMode === "repo" ? (
+          <div className="field-block">
+            <label htmlFor="repo-url">GitHub repo URL</label>
+            <input
+              id="repo-url"
+              value={repoUrl}
+              disabled={isRunning}
+              onChange={(e) => setRepoUrl(e.target.value)}
+              placeholder="https://github.com/owner/repo"
+            />
+          </div>
+        ) : (
+          <div className="field-block">
+            <label htmlFor="code-input">Paste code directly</label>
+            <textarea
+              id="code-input"
+              value={codeInput}
+              disabled={isRunning}
+              onChange={(e) => setCodeInput(e.target.value)}
+              placeholder="Paste legacy files here."
+            />
+          </div>
+        )}
 
-        <div style={{ marginTop: 12 }}>
+        <div className="field-block">
           <label htmlFor="language">Language hint</label>
           <select
             id="language"
@@ -244,36 +308,19 @@ export default function HomePage() {
           </select>
         </div>
 
-        <div style={{ marginTop: 12 }}>
-          <label htmlFor="code-input">Or paste code directly</label>
-          <textarea
-            id="code-input"
-            value={codeInput}
-            disabled={isRunning}
-            onChange={(e) => setCodeInput(e.target.value)}
-            placeholder="Paste legacy files here if you do not want to fetch from GitHub."
-          />
-        </div>
-
-        <div className="row" style={{ marginTop: 12 }}>
-          <button type="button" disabled={!canRun || isRunning} onClick={runSequentially}>
-            {isRunning ? "Running workflow..." : "Run steps 1→4 via UI orchestration"}
-          </button>
-          <button
-            className="secondary"
-            type="button"
-            disabled={!canRun || isRunning}
-            onClick={runPipelineRoute}
-          >
-            Run via pipeline endpoint
+        <div className="row action-row">
+          <button className="primary-cta" type="button" disabled={!canRun || isRunning} onClick={runSequentially}>
+            {isRunning ? "Running workflow..." : "Run analysis"}
           </button>
         </div>
-        <p>Status: {status}</p>
-        {error ? <p style={{ color: "#fca5a5" }}>Error: {error}</p> : null}
+        {error ? <p className="error-copy">Error: {error}</p> : null}
       </section>
 
       <section className="card">
-        <h2>Workflow Progress</h2>
+        <div className="section-heading">
+          <h2>Workflow Timeline</h2>
+          <p>Real-time status from ingest to final export and notifications.</p>
+        </div>
         <div className="progress-track" aria-label="Workflow progress">
           <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
         </div>
@@ -285,14 +332,11 @@ export default function HomePage() {
         ) : null}
         <ol className="step-list">
           {WORKFLOW_STEPS.map((step) => {
-            const activeIndex = (activeStep ?? lastActiveStep)
-              ? WORKFLOW_STEPS.findIndex((item) => item.key === (activeStep ?? lastActiveStep))
-              : -1;
             const index = WORKFLOW_STEPS.findIndex((item) => item.key === step.key);
             const state =
               status === "done"
                 ? "complete"
-                : index < activeIndex
+                : index < currentFocusStepIndex
                   ? "complete"
                   : step.key === activeStep
                     ? "active"
@@ -304,53 +348,107 @@ export default function HomePage() {
                 <span className="step-chip" aria-hidden="true">
                   {index + 1}
                 </span>
-                <span>{step.label}</span>
+                <div className="step-body">
+                  <span className="step-title">{step.label}</span>
+                  <span className="step-subtitle">{STEP_RESULT_TITLES[step.key]}</span>
+                </div>
               </li>
             );
           })}
         </ol>
       </section>
 
-      {step1 ? (
-        <section className="card">
-          <h2>Step 1 - Ingest and Review (Gemini)</h2>
-          <pre>{JSON.stringify(step1, null, 2)}</pre>
-        </section>
-      ) : null}
-
-      {step2 ? (
-        <section className="card">
-          <h2>Step 2 - Generate Actions + Verify (Gemini)</h2>
-          <pre>{JSON.stringify(step2, null, 2)}</pre>
-        </section>
-      ) : null}
-
-      {step3 ? (
-        <section className="card">
-          <h2>Step 3 - Structure (Dust)</h2>
-          <pre>{JSON.stringify(step3, null, 2)}</pre>
-        </section>
-      ) : null}
-
-      {step4 ? (
-        <section className="card">
-          <h2>Step 4 - Automate Delivery (CodeWords + Slack)</h2>
-          <p>
-            Issues created: <strong>{step4.issuesCreatedCount}</strong> | Slack:{" "}
-            <strong>{step4.slackStatus}</strong>
-          </p>
-          {step4.issueLinks.length > 0 ? (
-            <ul>
-              {step4.issueLinks.map((link) => (
-                <li key={link}>
-                  <a href={link} target="_blank" rel="noreferrer">
-                    {link}
-                  </a>
+      {step1 || step2 || step3 || step4 ? (
+        <section className="results-grid">
+          {step1 ? (
+            <article className="card result-card">
+              <h3>Step 1 — Ingest and Review</h3>
+              <p className="result-summary">{step1.summary}</p>
+              <ul className="result-points">
+                <li>
+                  <strong>Architecture:</strong> {step1.architecture}
                 </li>
-              ))}
-            </ul>
+                <li>
+                  <strong>Legacy patterns:</strong> {step1.legacyPatterns}
+                </li>
+                <li>
+                  <strong>Top concerns:</strong> {step1.concerns}
+                </li>
+              </ul>
+              <details>
+                <summary>View raw JSON</summary>
+                <pre>{JSON.stringify(step1, null, 2)}</pre>
+              </details>
+            </article>
           ) : null}
-          <pre>{JSON.stringify(step4, null, 2)}</pre>
+
+          {step2 ? (
+            <article className="card result-card">
+              <h3>Step 2 — Action Plan + Verification</h3>
+              <p className="result-summary">Generated migration and reliability actions with verification notes.</p>
+              <ul className="result-points">
+                <li>
+                  <strong>Action plan:</strong> {step2.actions.slice(0, 280)}
+                  {step2.actions.length > 280 ? "..." : ""}
+                </li>
+                <li>
+                  <strong>Verification notes:</strong> {step2.verificationNotes.slice(0, 280)}
+                  {step2.verificationNotes.length > 280 ? "..." : ""}
+                </li>
+              </ul>
+              <details>
+                <summary>View raw JSON</summary>
+                <pre>{JSON.stringify(step2, null, 2)}</pre>
+              </details>
+            </article>
+          ) : null}
+
+          {step3 ? (
+            <article className="card result-card">
+              <h3>Step 3 — Structured Tickets</h3>
+              <p className="result-summary">{step3.summary}</p>
+              <ul className="result-points">
+                <li>
+                  <strong>Ticket count:</strong> {step3.tickets.length}
+                </li>
+                <li>
+                  <strong>Highest priority:</strong> {step3.tickets[0]?.priority ?? "N/A"}
+                </li>
+                <li>
+                  <strong>First ticket:</strong> {step3.tickets[0]?.title ?? "N/A"}
+                </li>
+              </ul>
+              <details>
+                <summary>View raw JSON</summary>
+                <pre>{JSON.stringify(step3, null, 2)}</pre>
+              </details>
+            </article>
+          ) : null}
+
+          {step4 ? (
+            <article className="card result-card">
+              <h3>Step 4 — Export + Notify</h3>
+              <p className="result-summary">
+                Issues created: <strong>{step4.issuesCreatedCount}</strong> • Slack status:{" "}
+                <strong>{step4.slackStatus}</strong>
+              </p>
+              {step4.issueLinks.length > 0 ? (
+                <ul className="result-links">
+                  {step4.issueLinks.map((link) => (
+                    <li key={link}>
+                      <a href={link} target="_blank" rel="noreferrer">
+                        {link}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <details>
+                <summary>View raw JSON</summary>
+                <pre>{JSON.stringify(step4, null, 2)}</pre>
+              </details>
+            </article>
+          ) : null}
         </section>
       ) : null}
     </main>
