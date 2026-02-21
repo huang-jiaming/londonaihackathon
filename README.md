@@ -1,4 +1,4 @@
-# Repo Surgeon
+ # Repo Surgeon
 
 Legacy code triage pipeline for the London Hackathon (Conduct/Open track): ingest repo -> generate verified improvements -> structure tickets -> export automations.
 
