@@ -32,6 +32,8 @@ Deploy the current Next.js app to a runtime host (recommended: Vercel or Render)
 7. Click Deploy.
 8. Save the deployed API origin (example: `https://repo-surgeon-api.vercel.app`).
 
+Important: keep `STATIC_EXPORT` unset on Vercel backend deploys. In this repo, static export is now opt-in and only enabled when `STATIC_EXPORT=true`.
+
 You must have these backend env vars set on that host:
 - `GEMINI_API_KEY`
 - `DUST_API_KEY`
@@ -68,7 +70,7 @@ Fast option:
    - `POST {NEXT_PUBLIC_API_BASE_URL}/api/export`
 
 If you still want to attempt Next static export directly from this repo, verify locally first:
-- `npm run build`
+- `npm run build:static`
 - ensure export succeeds with your Next version/config and does not include server route handlers.
 
 ## 4) Enable GitHub Pages
