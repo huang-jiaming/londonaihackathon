@@ -37,12 +37,13 @@ function extractAgentOutput(json: Record<string, unknown>): string {
     if (!Array.isArray(batch)) continue;
     for (const msg of batch) {
       const m = msg as Record<string, unknown>;
-      if (m.type === "agent" && typeof m.content === "string") {
+      const isAgent = m.type === "agent" || m.type === "agent_message";
+      if (isAgent && typeof m.content === "string") {
         lastAgentContent = m.content;
       }
     }
   }
-  return lastAgentContent ?? JSON.stringify(json);
+  return lastAgentContent?.trim() ?? JSON.stringify(json);
 }
 
 export async function runDustAgent(content: string): Promise<string> {
