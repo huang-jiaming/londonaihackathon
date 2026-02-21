@@ -198,12 +198,14 @@ pre {
 
 .metrics-grid {
   margin-top: 18px;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
 .metric-card {
+  width: min(240px, 100%);
   padding: 12px;
   border-radius: 14px;
   background: linear-gradient(180deg, rgba(31, 39, 70, 0.65) 0%, rgba(21, 26, 48, 0.62) 100%);
@@ -463,10 +465,6 @@ details[open] summary {
 }
 
 @media (max-width: 900px) {
-  .metrics-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .results-grid {
     grid-template-columns: 1fr;
   }
@@ -482,8 +480,8 @@ details[open] summary {
     padding: 16px;
   }
 
-  .metrics-grid {
-    grid-template-columns: 1fr 1fr;
+  .metric-card {
+    width: calc(50% - 6px);
   }
 }
 

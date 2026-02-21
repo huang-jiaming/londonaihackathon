@@ -6,7 +6,7 @@ import {
   step3StructureWithDust,
   step4ExportWithCodeWords
 } from "@/lib/steps";
-import type { IngestInput } from "@/lib/types";
+import type { IngestInput, RepoContext } from "@/lib/types";
 
 export function OPTIONS(request: NextRequest) {
   return handleOptions(request);
@@ -22,7 +22,14 @@ export async function POST(request: NextRequest) {
     const step1 = await step1IngestAndReview(body);
     const step2 = await step2GenerateActionItems(step1);
     const step3 = await step3StructureWithDust(step2);
-    const step4 = await step4ExportWithCodeWords(step3);
+    const repoName = body.repoUrl?.trim()
+      ? body.repoUrl.trim().replace(/\/+$/, "").split("/").pop()?.replace(/\.git$/i, "")
+      : undefined;
+    const repoContext: RepoContext = {
+      repoName: repoName || undefined,
+      repoUrl: body.repoUrl?.trim() || undefined
+    };
+    const step4 = await step4ExportWithCodeWords(step3, repoContext);
 
     return withCors(
       request,
