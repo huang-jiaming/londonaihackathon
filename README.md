@@ -2,14 +2,6 @@
 
 Legacy code triage pipeline for the Tech Europe: London AI Hackathon (Conduct/Open track): ingest repo -> generate verified improvements -> structure tickets -> export automations.
 
-## Why this project
-
-Teams often fail by building too much. Repo Surgeon focuses on one tight loop that is easy to demo in 2 minutes:
-- Input a repo URL or pasted legacy code
-- Produce architecture/risk analysis
-- Turn analysis into prioritized, verified action items
-- Convert into structured tickets and export automatically
-
 ## How to use the tool
 
 1. **Access the application**  
