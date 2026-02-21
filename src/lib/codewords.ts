@@ -81,7 +81,7 @@ export async function runCodeWordsWorkflow(
       tickets: structured.tickets,
       summary: structured.summary,
       repoName: repoContext?.repoName,
-      repoUrl: repoContext?.repoUrl,
+      repoURL: repoContext?.repoUrl,
       repoContext
     })
   });
