@@ -4,7 +4,6 @@ import { runGeminiPrompt } from "@/lib/gemini";
 import type {
   ActionItems,
   ExportResult,
-  GitHubIssueDraft,
   IngestInput,
   RepoAnalysis,
   StructuredOutput
@@ -252,22 +251,21 @@ export async function step4ExportWithCodeWords(
 
   try {
     const codeWordsPayload = await runCodeWordsWorkflow(structured);
-    const createdIssues = await createGitHubIssues(codeWordsPayload.githubIssuesPayload);
     const slackResult = await sendSlackSummary(
       codeWordsPayload.slackMessagePayload.text,
       codeWordsPayload.slackMessagePayload.blocks
     );
 
     return {
-      success: createdIssues.links.length > 0,
+      success: slackResult.status !== "failed",
       ticketsCreated: structured.tickets.length,
-      issuesCreatedCount: createdIssues.links.length,
-      issueLinks: createdIssues.links,
+      issuesCreatedCount: 0,
+      issueLinks: [],
       slackStatus: slackResult.status,
       slackMessageTsOrId: slackResult.messageTsOrId,
       provider: "codewords",
       rawResponse: codeWordsPayload,
-      notes: createdIssues.notes
+      notes: "GitHub issue creation is handled by Codewords."
     };
   } catch (error) {
     return {
@@ -284,68 +282,6 @@ export async function step4ExportWithCodeWords(
           : "Step 4 failed, generated local CSV fallback."
     };
   }
-}
-
-async function createGitHubIssues(
-  issues: GitHubIssueDraft[]
-): Promise<{ links: string[]; notes?: string }> {
-  const token = process.env.GITHUB_ISSUES_TOKEN;
-  const owner = process.env.GITHUB_ISSUES_OWNER;
-  const repo = process.env.GITHUB_ISSUES_REPO;
-
-  if (!token || !owner || !repo) {
-    throw new Error(
-      "Missing GITHUB_ISSUES_TOKEN, GITHUB_ISSUES_OWNER, or GITHUB_ISSUES_REPO"
-    );
-  }
-
-  const links: string[] = [];
-  const failures: string[] = [];
-
-  for (const issue of issues) {
-    try {
-      const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github+json",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          title: issue.title,
-          body: issue.body,
-          labels: issue.labels
-        })
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        failures.push(`${issue.title}: ${response.status} ${text}`);
-        continue;
-      }
-
-      const json = (await response.json()) as Record<string, unknown>;
-      const url =
-        (json.html_url as string | undefined) ?? (json.url as string | undefined) ?? "";
-      if (url) {
-        links.push(url);
-      }
-    } catch (error) {
-      failures.push(
-        `${issue.title}: ${
-          error instanceof Error ? error.message : "Unknown issue creation error"
-        }`
-      );
-    }
-  }
-
-  return {
-    links,
-    notes:
-      failures.length > 0
-        ? `Some GitHub issues failed: ${failures.slice(0, 3).join(" | ")}`
-        : undefined
-  };
 }
 
 async function sendSlackSummary(
