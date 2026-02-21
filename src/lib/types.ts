@@ -74,5 +74,4 @@ export interface ExportRequest {
 export interface IngestInput {
   repoUrl?: string;
   codeInput?: string;
-  language?: string;
 }

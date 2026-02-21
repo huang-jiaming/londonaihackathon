@@ -14,7 +14,6 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as {
       repoUrl?: string;
       codeInput?: string;
-      language?: string;
     };
     const analysis = await step1IngestAndReview(body);
     return withCors(request, NextResponse.json(analysis));
