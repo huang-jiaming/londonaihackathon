@@ -5,6 +5,7 @@ import type {
   ActionItems,
   ExportResult,
   IngestInput,
+  RepoContext,
   RepoAnalysis,
   StructuredOutput
 } from "@/lib/types";
@@ -245,12 +246,13 @@ function toCsv(structured: StructuredOutput): string {
 }
 
 export async function step4ExportWithCodeWords(
-  structured: StructuredOutput
+  structured: StructuredOutput,
+  repoContext?: RepoContext
 ): Promise<ExportResult> {
   const csvFallback = toCsv(structured);
 
   try {
-    const codeWordsPayload = await runCodeWordsWorkflow(structured);
+    const codeWordsPayload = await runCodeWordsWorkflow(structured, repoContext);
     const slackResult = await sendSlackSummary(
       codeWordsPayload.slackMessagePayload.text,
       codeWordsPayload.slackMessagePayload.blocks
@@ -259,8 +261,6 @@ export async function step4ExportWithCodeWords(
     return {
       success: slackResult.status !== "failed",
       ticketsCreated: structured.tickets.length,
-      issuesCreatedCount: 0,
-      issueLinks: [],
       slackStatus: slackResult.status,
       slackMessageTsOrId: slackResult.messageTsOrId,
       provider: "codewords",
@@ -271,8 +271,6 @@ export async function step4ExportWithCodeWords(
     return {
       success: false,
       ticketsCreated: structured.tickets.length,
-      issuesCreatedCount: 0,
-      issueLinks: [],
       slackStatus: "failed",
       provider: "fallback",
       csvContent: csvFallback,

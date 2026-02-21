@@ -39,8 +39,6 @@ export interface StructuredOutput {
 export interface ExportResult {
   success: boolean;
   ticketsCreated: number;
-  issuesCreatedCount: number;
-  issueLinks: string[];
   slackStatus: "sent" | "failed" | "skipped";
   slackMessageTsOrId?: string;
   provider: "codewords" | "fallback";
@@ -61,6 +59,16 @@ export interface CodeWordsExportPayload {
     text: string;
     blocks?: unknown[];
   };
+}
+
+export interface RepoContext {
+  repoName?: string;
+  repoUrl?: string;
+}
+
+export interface ExportRequest {
+  structured: StructuredOutput;
+  repoContext?: RepoContext;
 }
 
 export interface IngestInput {

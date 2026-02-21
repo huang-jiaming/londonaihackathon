@@ -91,7 +91,6 @@ export default function HomePage() {
   const loadingHint = activeStep ? STEP_HINTS[activeStep][loadingHintIndex] : null;
   const completedSteps = [step1, step2, step3, step4].filter(Boolean).length;
   const totalTickets = step3?.tickets.length ?? 0;
-  const issueCount = step4?.issuesCreatedCount ?? 0;
   const currentFocusStep = activeStep ?? lastActiveStep;
   const currentFocusStepIndex = currentFocusStep
     ? WORKFLOW_STEPS.findIndex((step) => step.key === currentFocusStep)
@@ -140,6 +139,14 @@ export default function HomePage() {
     return json;
   }
 
+  function deriveRepoNameFromUrl(input: string): string | undefined {
+    const trimmed = input.trim();
+    if (!trimmed) return undefined;
+    const repoSegment = trimmed.replace(/\/+$/, "").split("/").pop();
+    if (!repoSegment) return undefined;
+    return repoSegment.replace(/\.git$/i, "") || undefined;
+  }
+
   function resetOutputs() {
     setError(null);
     setStep1(null);
@@ -170,7 +177,16 @@ export default function HomePage() {
       setStep3(res3);
 
       setStatus("step4");
-      const res4 = await postJson<ExportResult>("/api/export", res3);
+      const res4 = await postJson<ExportResult>("/api/export", {
+        structured: res3,
+        repoContext:
+          reviewMode === "repo"
+            ? {
+                repoName: deriveRepoNameFromUrl(repoUrl),
+                repoUrl: repoUrl.trim() || undefined
+              }
+            : undefined
+      });
       setStep4(res4);
 
       setStatus("done");
@@ -231,10 +247,6 @@ export default function HomePage() {
           <article className="metric-card">
             <span className="metric-label">Tickets Structured</span>
             <strong className="metric-value">{totalTickets}</strong>
-          </article>
-          <article className="metric-card">
-            <span className="metric-label">Issues Created</span>
-            <strong className="metric-value">{issueCount}</strong>
           </article>
         </div>
       </section>
@@ -429,20 +441,16 @@ export default function HomePage() {
             <article className="card result-card">
               <h3>Step 4 — Export + Notify</h3>
               <p className="result-summary">
-                Issues created: <strong>{step4.issuesCreatedCount}</strong> • Slack status:{" "}
-                <strong>{step4.slackStatus}</strong>
+                {step4.success ? (
+                  <>
+                    Issues status: <strong>created</strong> • Slack status: <strong>sent</strong>
+                  </>
+                ) : (
+                  <>
+                    Issues status: <strong>failed</strong> • Slack status: <strong>{step4.slackStatus}</strong>
+                  </>
+                )}
               </p>
-              {step4.issueLinks.length > 0 ? (
-                <ul className="result-links">
-                  {step4.issueLinks.map((link) => (
-                    <li key={link}>
-                      <a href={link} target="_blank" rel="noreferrer">
-                        {link}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
               <details>
                 <summary>View raw JSON</summary>
                 <pre>{JSON.stringify(step4, null, 2)}</pre>

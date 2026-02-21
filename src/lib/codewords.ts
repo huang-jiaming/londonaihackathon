@@ -1,6 +1,7 @@
 import type {
   CodeWordsExportPayload,
   GitHubIssueDraft,
+  RepoContext,
   StructuredOutput
 } from "@/lib/types";
 
@@ -60,7 +61,8 @@ function parseCodeWordsResponse(
 }
 
 export async function runCodeWordsWorkflow(
-  structured: StructuredOutput
+  structured: StructuredOutput,
+  repoContext?: RepoContext
 ): Promise<CodeWordsExportPayload> {
   const apiKey = process.env.CODEWORDS_API_KEY;
   const serviceId = process.env.CODEWORDS_SERVICE_ID;
@@ -77,7 +79,10 @@ export async function runCodeWordsWorkflow(
     },
     body: JSON.stringify({
       tickets: structured.tickets,
-      summary: structured.summary
+      summary: structured.summary,
+      repoName: repoContext?.repoName,
+      repoUrl: repoContext?.repoUrl,
+      repoContext
     })
   });
 

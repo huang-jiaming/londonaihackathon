@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleOptions, rejectDisallowedOrigin, withCors } from "@/lib/cors";
 import { step4ExportWithCodeWords } from "@/lib/steps";
-import type { StructuredOutput } from "@/lib/types";
+import type { ExportRequest, RepoContext, StructuredOutput } from "@/lib/types";
 
 export function OPTIONS(request: NextRequest) {
   return handleOptions(request);
@@ -12,11 +12,14 @@ export async function POST(request: NextRequest) {
   if (rejected) return rejected;
 
   try {
-    const body = (await request.json()) as StructuredOutput;
-    if (!body.tickets || !Array.isArray(body.tickets)) {
+    const body = (await request.json()) as StructuredOutput | ExportRequest;
+    const structured = "structured" in body ? body.structured : body;
+    const repoContext: RepoContext | undefined = "structured" in body ? body.repoContext : undefined;
+
+    if (!structured.tickets || !Array.isArray(structured.tickets)) {
       throw new Error("Missing tickets payload");
     }
-    const exported = await step4ExportWithCodeWords(body);
+    const exported = await step4ExportWithCodeWords(structured, repoContext);
     return withCors(request, NextResponse.json(exported));
   } catch (error) {
     return withCors(
