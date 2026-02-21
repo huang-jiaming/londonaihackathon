@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   ActionItems,
   ExportResult,
@@ -9,6 +9,37 @@ import type {
 } from "@/lib/types";
 
 type StepKey = "idle" | "step1" | "step2" | "step3" | "step4" | "done" | "error";
+type ActiveStep = Exclude<StepKey, "idle" | "done" | "error">;
+
+const WORKFLOW_STEPS: Array<{ key: ActiveStep; label: string }> = [
+  { key: "step1", label: "Ingest and review" },
+  { key: "step2", label: "Generate action plan" },
+  { key: "step3", label: "Structure into tickets" },
+  { key: "step4", label: "Export + notify" }
+];
+
+const STEP_HINTS: Record<ActiveStep, string[]> = {
+  step1: [
+    "Scanning repository content...",
+    "Analyzing architecture and legacy patterns...",
+    "Summarizing high-priority concerns..."
+  ],
+  step2: [
+    "Drafting migration and refactor tasks...",
+    "Validating quality and correctness...",
+    "Refining priorities and effort estimates..."
+  ],
+  step3: [
+    "Normalizing tasks into structured tickets...",
+    "Mapping category, priority, and effort...",
+    "Preparing acceptance criteria..."
+  ],
+  step4: [
+    "Sending export payload to CodeWords...",
+    "Preparing notification summary...",
+    "Finishing delivery details..."
+  ]
+};
 
 const SAMPLE_REPO = "https://github.com/python/cpython";
 const SAMPLE_CODE = `# Python 2 style legacy example
@@ -26,6 +57,9 @@ export default function HomePage() {
   const [language, setLanguage] = useState("python");
   const [status, setStatus] = useState<StepKey>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [lastActiveStep, setLastActiveStep] = useState<ActiveStep | null>(null);
+  const [loadingHintIndex, setLoadingHintIndex] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const [step1, setStep1] = useState<RepoAnalysis | null>(null);
   const [step2, setStep2] = useState<ActionItems | null>(null);
@@ -33,6 +67,41 @@ export default function HomePage() {
   const [step4, setStep4] = useState<ExportResult | null>(null);
 
   const canRun = useMemo(() => !!repoUrl.trim() || !!codeInput.trim(), [repoUrl, codeInput]);
+  const isRunning = status === "step1" || status === "step2" || status === "step3" || status === "step4";
+  const activeStep = isRunning ? (status as ActiveStep) : null;
+  const progressPercent = useMemo(() => {
+    if (status === "idle") return 0;
+    if (status === "done") return 100;
+    const focusStep = status === "error" ? lastActiveStep : activeStep;
+    if (!focusStep) return 0;
+    const activeIndex = WORKFLOW_STEPS.findIndex((step) => step.key === focusStep);
+    return Math.max(10, (activeIndex + 1) * 25);
+  }, [activeStep, lastActiveStep, status]);
+  const loadingHint = activeStep ? STEP_HINTS[activeStep][loadingHintIndex] : null;
+
+  useEffect(() => {
+    if (activeStep) {
+      setLastActiveStep(activeStep);
+    }
+  }, [activeStep]);
+
+  useEffect(() => {
+    if (!activeStep) {
+      setLoadingHintIndex(0);
+      setElapsedSeconds(0);
+      return;
+    }
+
+    const startedAt = Date.now();
+    setLoadingHintIndex(0);
+    setElapsedSeconds(0);
+    const intervalId = window.setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+      setLoadingHintIndex((current) => (current + 1) % STEP_HINTS[activeStep].length);
+    }, 1100);
+
+    return () => window.clearInterval(intervalId);
+  }, [activeStep]);
 
   function getApiUrl(path: string): string {
     const base = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
@@ -125,6 +194,7 @@ export default function HomePage() {
           <button
             className="secondary"
             type="button"
+            disabled={isRunning}
             onClick={() => {
               setRepoUrl(SAMPLE_REPO);
               setCodeInput("");
@@ -136,6 +206,7 @@ export default function HomePage() {
           <button
             className="secondary"
             type="button"
+            disabled={isRunning}
             onClick={() => {
               setCodeInput(SAMPLE_CODE);
               setRepoUrl("");
@@ -151,6 +222,7 @@ export default function HomePage() {
           <input
             id="repo-url"
             value={repoUrl}
+            disabled={isRunning}
             onChange={(e) => setRepoUrl(e.target.value)}
             placeholder="https://github.com/owner/repo"
           />
@@ -158,7 +230,12 @@ export default function HomePage() {
 
         <div style={{ marginTop: 12 }}>
           <label htmlFor="language">Language hint</label>
-          <select id="language" value={language} onChange={(e) => setLanguage(e.target.value)}>
+          <select
+            id="language"
+            value={language}
+            disabled={isRunning}
+            onChange={(e) => setLanguage(e.target.value)}
+          >
             <option value="python">Python</option>
             <option value="javascript">JavaScript</option>
             <option value="typescript">TypeScript</option>
@@ -172,21 +249,66 @@ export default function HomePage() {
           <textarea
             id="code-input"
             value={codeInput}
+            disabled={isRunning}
             onChange={(e) => setCodeInput(e.target.value)}
             placeholder="Paste legacy files here if you do not want to fetch from GitHub."
           />
         </div>
 
         <div className="row" style={{ marginTop: 12 }}>
-          <button type="button" disabled={!canRun} onClick={runSequentially}>
-            Run steps 1→4 via UI orchestration
+          <button type="button" disabled={!canRun || isRunning} onClick={runSequentially}>
+            {isRunning ? "Running workflow..." : "Run steps 1→4 via UI orchestration"}
           </button>
-          <button className="secondary" type="button" disabled={!canRun} onClick={runPipelineRoute}>
+          <button
+            className="secondary"
+            type="button"
+            disabled={!canRun || isRunning}
+            onClick={runPipelineRoute}
+          >
             Run via pipeline endpoint
           </button>
         </div>
         <p>Status: {status}</p>
         {error ? <p style={{ color: "#fca5a5" }}>Error: {error}</p> : null}
+      </section>
+
+      <section className="card">
+        <h2>Workflow Progress</h2>
+        <div className="progress-track" aria-label="Workflow progress">
+          <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
+        </div>
+        {isRunning && loadingHint ? (
+          <p className="progress-message">
+            <span className="spinner-dot" aria-hidden="true" />
+            {loadingHint} <span className="progress-elapsed">({elapsedSeconds}s)</span>
+          </p>
+        ) : null}
+        <ol className="step-list">
+          {WORKFLOW_STEPS.map((step) => {
+            const activeIndex = (activeStep ?? lastActiveStep)
+              ? WORKFLOW_STEPS.findIndex((item) => item.key === (activeStep ?? lastActiveStep))
+              : -1;
+            const index = WORKFLOW_STEPS.findIndex((item) => item.key === step.key);
+            const state =
+              status === "done"
+                ? "complete"
+                : index < activeIndex
+                  ? "complete"
+                  : step.key === activeStep
+                    ? "active"
+                    : status === "error" && step.key === lastActiveStep
+                      ? "error"
+                      : "pending";
+            return (
+              <li key={step.key} className={`step-item ${state}`}>
+                <span className="step-chip" aria-hidden="true">
+                  {index + 1}
+                </span>
+                <span>{step.label}</span>
+              </li>
+            );
+          })}
+        </ol>
       </section>
 
       {step1 ? (
@@ -212,7 +334,7 @@ export default function HomePage() {
 
       {step4 ? (
         <section className="card">
-          <h2>Step 4 - Automate Delivery (CodeWords -&gt; GitHub Issues + Slack)</h2>
+          <h2>Step 4 - Automate Delivery (CodeWords + Slack)</h2>
           <p>
             Issues created: <strong>{step4.issuesCreatedCount}</strong> | Slack:{" "}
             <strong>{step4.slackStatus}</strong>
