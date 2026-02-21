@@ -1,6 +1,6 @@
  # Repo Surgeon
 
-Legacy code triage pipeline for the London Hackathon (Conduct/Open track): ingest repo -> generate verified improvements -> structure tickets -> export automations.
+Legacy code triage pipeline for the Tech Europe: London AI Hackathon (Conduct/Open track): ingest repo -> generate verified improvements -> structure tickets -> export automations.
 
 ## Why this project
 
@@ -9,6 +9,22 @@ Teams often fail by building too much. Repo Surgeon focuses on one tight loop th
 - Produce architecture/risk analysis
 - Turn analysis into prioritized, verified action items
 - Convert into structured tickets and export automatically
+
+## How to use the tool
+
+1. **Access the application**  
+   Open [https://londonaihackathon.vercel.app/](https://londonaihackathon.vercel.app/) in your browser.
+
+2. **Run against any public GitHub repo**  
+   Choose **Repo URL** mode, paste a public GitHub repository URL (e.g. `https://github.com/huang-jiaming/fake_repo`), optionally set a language hint, then click **Run analysis**. The pipeline will ingest the repo, analyze it, generate action items, structure tickets, and export (Slack + GitHub Issues when configured).
+
+3. **See the Slack integration**  
+   Join our Slack channel to see delivery summaries and issue links when runs complete:  
+   [Join Slack workspace](https://join.slack.com/t/erdincmutluworkspace/shared_invite/zt-3r27o8r9s-Cft8pEOljKZhLvCkGo2Mmg)
+
+4. **See created GitHub issues**  
+   Issues created by the tool are published to our demo repo:  
+   [https://github.com/huang-jiaming/hackathon-issues/issues](https://github.com/huang-jiaming/hackathon-issues/issues)
 
 ## Hackathon partner technologies used
 
@@ -22,6 +38,9 @@ This project uses the required 3+ partner technologies:
 3. **CodeWords** (Step 4)
    - Automation/orchestration of delivery payloads
    - Critical path before downstream delivery
+
+Additional Integrations:
+
 4. **GitHub Issues** (Delivery target)
    - Creates execution-ready issues for engineering teams
 5. **Slack** (Delivery target)
@@ -42,31 +61,32 @@ flowchart LR
 
 ## Repository layout
 
-- `src/app/page.tsx`: frontend orchestration UI
+- `src/app/page.tsx`: frontend orchestration UI (Repo URL / Direct Code modes, workflow timeline, metrics)
 - `src/app/api/ingest/route.ts`: Step 1 endpoint
 - `src/app/api/generate-actions/route.ts`: Step 2 endpoint
 - `src/app/api/structure/route.ts`: Step 3 endpoint
 - `src/app/api/export/route.ts`: Step 4 endpoint
 - `src/app/api/pipeline/route.ts`: optional one-call pipeline route
+- `src/app/api/stats/route.ts`: dashboard stats (repos scanned, issues created, open issues)
 - `src/lib/steps.ts`: step implementations
+- `src/lib/stats.ts`: stats persistence and GitHub open-issues count
 - `src/lib/types.ts`: strict shared contracts
 - `docs/STEP1_SPEC.md` ... `docs/STEP4_SPEC.md`: teammate specs
+- `docs/DEMO_SCRIPT.md`: hackathon demo script with timing and talking points
 - `docs/CURSOR_AGENT_HANDOFF.md`: Cursor collaboration playbook
 - `docs/ENGINEERING_PLAN.md`: execution and architecture plan
 - `docs/INTEGRATION_REVIEW.md`: full setup + token + integration checklist
 - `docs/DEPLOY_GITHUB_PAGES.md`: production deployment split (Vercel + Pages)
 - `docs/IMPLEMENTATION_STATUS.md`: current implementation and local test status
+- `data/`: persisted stats (repos-scanned.json); gitignored
 
 ## Current implementation status
 
-- Step 1 implemented: Gemini ingest/review from repo URL or pasted code
-- Step 2 implemented: Gemini action generation + self-verification loop
-- Step 3 implemented: Dust structuring to strict ticket JSON
-- Step 4 implemented: CodeWords orchestration -> GitHub issue creation -> Slack summary
-- UI implemented: single-page flow with sample input buttons and delivery results panel
-- Local checks completed:
-  - `npm run build` passes
-  - visual smoke test on `http://localhost:3000` confirmed UI loads and error handling works
+- **Step 1:** Gemini ingest/review from repo URL or pasted code
+- **Step 2:** Gemini action generation + self-verification loop
+- **Step 3:** Dust structuring to strict ticket JSON
+- **Step 4:** CodeWords orchestration → Slack summary (GitHub issue creation handled by CodeWords)
+- **UI:** Single-page flow with Repo URL / Direct Code modes, workflow timeline, step result cards, and dashboard metrics
 
 ## Setup
 
@@ -98,7 +118,7 @@ Required vars:
 - `NEXT_PUBLIC_API_BASE_URL` (optional; required for static frontend deployments)
 
 Optional:
-- `GITHUB_TOKEN` (higher GitHub API rate limits for Step 1)
+- `GITHUB_TOKEN` (higher GitHub API rate limits for Step 1; also used for “Issues still open” dashboard metric if `GITHUB_ISSUES_TOKEN` is not set)
 
 ### 3) Run
 
@@ -187,14 +207,17 @@ Output:
 }
 ```
 
-### Step 4 - Export (CodeWords -> GitHub Issues + Slack)
+### Step 4 - Export (CodeWords → Slack)
 `POST /api/export`
 
-Input:
+Input (either raw structured output or with repo context):
 ```json
 {
-  "tickets": [],
-  "summary": "string"
+  "structured": {
+    "tickets": [{ "id": "T-001", "priority": "P0", "title": "...", "description": "...", "category": "migration", "effort": "small", "acceptanceCriteria": [] }],
+    "summary": "string"
+  },
+  "repoContext": { "repoName": "optional", "repoUrl": "optional" }
 }
 ```
 
@@ -203,26 +226,33 @@ Output:
 {
   "success": true,
   "ticketsCreated": 12,
-  "issuesCreatedCount": 12,
-  "issueLinks": ["https://github.com/owner/repo/issues/123"],
   "slackStatus": "sent",
-  "provider": "codewords"
+  "slackMessageTsOrId": "optional",
+  "provider": "codewords",
+  "rawResponse": {},
+  "notes": "GitHub issue creation is handled by Codewords."
 }
 ```
 
-Fallback output includes `csvContent` if external automation fails.
+On failure: `success: false`, `provider: "fallback"`, `csvContent` with CSV fallback, and `notes` describing the error.
+
+### Stats (dashboard)
+`GET /api/stats`
+
+Output:
+```json
+{
+  "reposScanned": 0,
+  "issuesCreated": 0,
+  "issuesOpen": 0
+}
+```
+
+`issuesOpen` is omitted when GitHub API is not configured (`GITHUB_ISSUES_TOKEN`, `GITHUB_ISSUES_OWNER`, `GITHUB_ISSUES_REPO`). Open count uses issues with the `repo-surgeon` label in the target repo.
 
 ## Demo script (2 minutes)
 
-1. Open UI and click sample input.
-2. Run sequential orchestration.
-3. Show each step output block appearing in order.
-4. Highlight partner tech usage:
-   - Gemini for analysis + verification
-   - Dust for JSON structuring
-   - CodeWords for delivery orchestration
-5. Show created GitHub Issues and Slack summary delivery.
-6. Show fallback CSV to prove reliability under failure.
+See **`docs/DEMO_SCRIPT.md`** for a full presentation script with timing and talking points (intro, UI walkthrough, run pipeline, results, partner tech recap, outro).
 
 ## Team workflow with Cursor
 
